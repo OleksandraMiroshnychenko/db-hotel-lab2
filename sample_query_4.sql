@@ -1,15 +1,19 @@
--- Хто прибирав номер клієнта з паспортом 'ЕК456789' у середу (3)
-SELECT DISTINCT
-    e.last_name,
-    e.first_name,
-    e.patronymic,
-    cs.floor,
-    cs.weekday
-FROM clients cl
-JOIN stays s ON s.client_id = cl.client_id
-JOIN rooms r ON r.room_id = s.room_id
-JOIN cleaning_schedule cs ON cs.floor = r.floor
-JOIN employees e ON e.employee_id = cs.employee_id
-WHERE cl.passport_number = 'ЕК456789'
-  AND cs.weekday = 3
-  AND s.checkout_date IS NULL;
+-- Кількість вільних номерів і вільних місць
+WITH occupancy AS (
+  SELECT
+    r.room_id,
+    rt.capacity,
+    COUNT(s.stay_id) AS occupied
+  FROM rooms r
+  JOIN room_types rt
+    ON rt.room_type_id = r.room_type_id
+  LEFT JOIN stays s
+    ON s.room_id = r.room_id
+    AND s.checkout_date IS NULL
+  GROUP BY r.room_id, rt.capacity
+)
+SELECT
+  COUNT(*) FILTER (WHERE occupied = 0) AS free_rooms,
+  COALESCE(SUM(capacity - occupied), 0) AS free_places
+FROM occupancy;
+
